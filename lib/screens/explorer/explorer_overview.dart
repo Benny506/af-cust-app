@@ -38,6 +38,10 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
   bool _showAllContextEntities = false;
   bool _showAllTopProducts = false;
 
+  // ── New Sliver Hero state ─────────────────────────────────────────────────
+  int _heroTabIndex = 0;
+  static const List<String> _heroTabLabels = ["Featured", "Markets", "Stores", "Products"];
+
   @override
   void initState() {
     super.initState();
@@ -286,6 +290,403 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
             store: stores[index],
           ),
         )
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  NEW SLIVER HERO — lives in the CustomScrollView sliver list.
+  //  The original _buildContextualHeroBanner() below is preserved for reuse.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Returns a SliverAppBar that acts as the full-bleed immersive hero for
+  /// the Explorer Overview screen, following the seller_details.dart pattern.
+  Widget _buildExplorerSliverHero() {
+    final isDark = MyTheme.isDark(context);
+    final size = MediaQuery.of(context).size;
+    final expandedHeight = size.height * 0.46;
+
+    // ── Contextual copy ──────────────────────────────────────────────────────
+    String heroTitle, heroMeta, heroSeed, peekTitle, peekSeed;
+    if (widget.explorerContext.isAtMarketLevel) {
+      heroTitle = widget.explorerContext.selectedMarket!.marketName;
+      heroMeta  = "Market Hub  ·  ${widget.explorerContext.selectedState?.stateName ?? 'Nigeria'}  ·  Open";
+      heroSeed  = "market_${widget.explorerContext.selectedMarket!.id}";
+      peekTitle = "${widget.explorerContext.selectedState?.stateName ?? 'Featured'} Hub";
+      peekSeed  = "peek_market_${widget.explorerContext.selectedMarket!.id}";
+    } else if (widget.explorerContext.isAtStateLevel) {
+      heroTitle = "${widget.explorerContext.selectedState!.stateName} Markets";
+      heroMeta  = "State Hub  ·  Nigeria  ·  Live";
+      heroSeed  = "state_${widget.explorerContext.selectedState!.id}";
+      peekTitle = "Top Stores";
+      peekSeed  = "peek_state_${widget.explorerContext.selectedState!.id}";
+    } else {
+      heroTitle = "Aba Trade Complex";
+      heroMeta  = "Flagship Market  ·  Abia  ·  Featured";
+      heroSeed  = "african_market_featured";
+      peekTitle = "Alaba Int'l";
+      peekSeed  = "peek_alaba_intl";
+    }
+
+    return SliverAppBar(
+      expandedHeight: expandedHeight,
+      pinned: false,
+      stretch: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.zoomBackground],
+        background: _buildHeroBackground(
+          isDark: isDark,
+          heroTitle: heroTitle,
+          heroMeta: heroMeta,
+          heroSeed: heroSeed,
+          peekTitle: peekTitle,
+          peekSeed: peekSeed,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroBackground({
+    required bool isDark,
+    required String heroTitle,
+    required String heroMeta,
+    required String heroSeed,
+    required String peekTitle,
+    required String peekSeed,
+  }) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 1 ── Full-bleed background image
+        CachedNetworkImage(
+          imageUrl: "https://picsum.photos/seed/$heroSeed/900/500",
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(decoration: const BoxDecoration(gradient: MyTheme.heroGradient)),
+          errorWidget: (_, __, ___) => Container(decoration: const BoxDecoration(gradient: MyTheme.heroGradient)),
+        ),
+
+        // 2 ── Decorative African silhouette
+        Positioned.fill(
+          child: CustomPaint(
+            painter: AfricanSilhouettePainter(baseColor: MyTheme.golden, opacity: 0.25),
+          ),
+        ),
+
+        // 3 ── Bottom-to-top dark scrim for text legibility
+        Positioned.fill(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.0, 0.42, 1.0],
+                colors: [
+                  Color(0x00000000),
+                  Color(0x55000000),
+                  Color(0xDD000000),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 4 ── Content column: tab nav ↑ → floating card ↓
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: _buildHeroTabNav(),
+              ),
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 12, 20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Main floating info card
+                  Expanded(
+                    child: _buildHeroInfoCard(
+                      title: heroTitle,
+                      meta: heroMeta,
+                      seed: heroSeed,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Peek card — right edge hint of next item
+                  _buildHeroPeekCard(title: peekTitle, seed: peekSeed),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Horizontal scrollable tab nav inside the hero.
+  Widget _buildHeroTabNav() {
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _heroTabLabels.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 28),
+        itemBuilder: (context, i) {
+          final active = _heroTabIndex == i;
+          return GestureDetector(
+            onTap: () => setState(() => _heroTabIndex = i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.only(bottom: 4),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: active ? Colors.white : Colors.transparent,
+                    width: 2.5,
+                  ),
+                ),
+              ),
+              child: Text(
+                _heroTabLabels[i],
+                style: TextStyle(
+                  color: active ? Colors.white : Colors.white.withOpacity(0.5),
+                  fontSize: 14,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Semi-transparent charcoal info card (lower-left of hero).
+  Widget _buildHeroInfoCard({required String title, required String meta, required String seed}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xD91A1A1A), // charcoal ~85% opacity
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Row(
+        children: [
+          // Portrait thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: "https://picsum.photos/seed/${seed}_thumb/80/100",
+              width: 44,
+              height: 60,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(width: 44, height: 60, color: MyTheme.golden.withOpacity(0.25)),
+              errorWidget: (_, __, ___) => Container(
+                width: 44, height: 60,
+                decoration: BoxDecoration(
+                  color: MyTheme.accent_color.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.storefront_rounded, color: Colors.white54, size: 20),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Title + meta
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  meta,
+                  style: const TextStyle(
+                    color: Color(0xFFA9A9A9),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Golden circular CTA (theme-adapted from the reference's neon-green)
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: MyTheme.golden,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: MyTheme.golden.withOpacity(0.45),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF1A1400), size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Peek card — partial right-edge card hinting horizontal scrollability.
+  Widget _buildHeroPeekCard({required String title, required String seed}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 88,
+        height: 80,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CachedNetworkImage(
+              imageUrl: "https://picsum.photos/seed/$seed/180/160",
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(color: MyTheme.accent_color.withOpacity(0.35)),
+              errorWidget: (_, __, ___) => Container(
+                color: MyTheme.accent_brown,
+                child: const Icon(Icons.photo_rounded, color: Colors.white24, size: 24),
+              ),
+            ),
+            // Scrim
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Color(0xCC000000)],
+                ),
+              ),
+            ),
+            // Label
+            Positioned(
+              bottom: 7, left: 7, right: 7,
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Chevron pill
+            Positioned(
+              top: 7, right: 7,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: MyTheme.golden.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.chevron_right_rounded, color: Color(0xFF1A1400), size: 10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Category filter chips row displayed immediately below the hero.
+  Widget _buildHeroCategoryChipsSliver() {
+    // Use loaded categories or fall back to static marketplace buckets
+    final List<Map<String, String>> chips = _categoryList.isNotEmpty
+        ? _categoryList.take(7).map<Map<String, String>>((c) => {
+              'label': (c.name ?? 'Category') as String,
+              'seed': 'cat_${c.id ?? c.name}',
+            }).toList()
+        : [
+            {'label': 'Electronics', 'seed': 'electronics_mkt'},
+            {'label': 'Fashion',     'seed': 'fashion_mkt'},
+            {'label': 'Food & Drink','seed': 'food_mkt'},
+            {'label': 'Crafts',      'seed': 'crafts_mkt'},
+            {'label': 'Textiles',    'seed': 'textiles_mkt'},
+            {'label': 'Art',         'seed': 'art_mkt'},
+            {'label': 'Agro',        'seed': 'agro_mkt'},
+          ];
+
+    return SizedBox(
+      height: 76,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: chips.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final chip = chips[i];
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 112,
+              height: 72,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Background image
+                  CachedNetworkImage(
+                    imageUrl: "https://picsum.photos/seed/${chip['seed']}/224/144",
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(color: MyTheme.border(context)),
+                    errorWidget: (_, __, ___) => Container(
+                      color: MyTheme.surface(context),
+                      child: Icon(Icons.category_rounded, color: MyTheme.secondaryText(context), size: 22),
+                    ),
+                  ),
+                  // Dark tint
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.52),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  // Label
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        chip['label']!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -822,9 +1223,16 @@ class _ExplorerOverviewState extends State<ExplorerOverview> {
     return CustomScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
-          const SliverToBoxAdapter(child: SizedBox(height: 0)),
-          SliverToBoxAdapter(child: _buildContextualHeroBanner()),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          // ── New immersive sliver hero (seller_details pattern) ──────────────
+          _buildExplorerSliverHero(),
+          // ── Category chips immediately below the hero ───────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 8),
+              child: _buildHeroCategoryChipsSliver(),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
           // ─── Phase 7 Contextual Slivers ───
           SliverToBoxAdapter(
