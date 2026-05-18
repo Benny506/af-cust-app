@@ -34,10 +34,12 @@ class _ExplorerDiscoverState extends State<ExplorerDiscover> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top + kToolbarHeight;
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
-        SliverToBoxAdapter(child: const SizedBox(height: 16)),
+        SliverToBoxAdapter(child: SizedBox(height: topPadding + 16)),
 
         // ── 1. Spotlights (tab-filtered, horizontal scroll)
         _buildSectionHeader("Market Spotlights", subtitle: "Tap a level · swipe stories →"),

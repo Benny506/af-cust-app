@@ -225,11 +225,11 @@ class _ExplorerImmersiveViewState extends State<ExplorerImmersiveView>
     final accumulated = _verticalDragAccum;
     setState(() => _verticalDragAccum = 0);
 
-    if (velocity > 500 || accumulated > 80) {
-      // Swipe down → drill in
+    if (velocity < -500 || accumulated < -80) {
+      // Swipe up → drill in
       _drillDown();
-    } else if (velocity < -500 || accumulated < -80) {
-      // Swipe up → go back
+    } else if (velocity > 500 || accumulated > 80) {
+      // Swipe down → go back
       Navigator.maybePop(context);
     }
   }
@@ -393,10 +393,10 @@ class _ExplorerImmersiveViewState extends State<ExplorerImmersiveView>
                     duration: const Duration(milliseconds: 400),
                     child: const Column(
                       children: [
-                        Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 30),
+                        Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white, size: 30),
                         SizedBox(height: 2),
                         Text(
-                          'Swipe down to explore',
+                          'Swipe up to explore',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.white70, fontSize: 11),
                         ),
@@ -554,7 +554,7 @@ class _ExplorerImmersiveViewState extends State<ExplorerImmersiveView>
                             const SizedBox(height: 2),
                             Text(
                               _canDrillDown
-                                  ? 'Swipe down to go deeper'
+                                  ? 'Swipe up to go deeper'
                                   : 'Tap to browse products',
                               style: const TextStyle(
                                 color: Color(0xFF8A8A8A),
