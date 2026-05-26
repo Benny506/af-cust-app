@@ -3,7 +3,7 @@ description: Afriomarkets Customer App — African marketplace with cultural exp
 
 publish_to: 'none'
 
-version: 1.0.0+4
+version: 1.0.0+5
 
 environment:
   sdk: ">=3.0.0 <=3.9.2"
@@ -52,7 +52,6 @@ dependencies:
   logging: ^1.2.0
 
   # --- Auth & Social ---
-  flutter_facebook_auth: ^7.0.0
   google_sign_in: ^6.2.0
   firebase_messaging: ^15.0.0
 

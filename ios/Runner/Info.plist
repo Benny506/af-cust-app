@@ -62,10 +62,6 @@
 	</dict>
 	<key>io.flutter.embedded_views_preview</key>
 	<true/>
-	<key>FacebookAppID</key>
-	<string>YOUR_FACEBOOK_APP_ID</string>
-	<key>FacebookClientToken</key>
-	<string>YOUR_FACEBOOK_CLIENT_TOKEN</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
